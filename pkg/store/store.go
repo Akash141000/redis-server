@@ -46,6 +46,5 @@ func (ms *MemoryStore) Get(key []byte) (Value, error) {
 	if !ok {
 		return nil, fmt.Errorf("key doesn't exist")
 	}
-
 	return val, nil
 }

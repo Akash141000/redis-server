@@ -46,7 +46,6 @@ func (p *Peer) ReadLoop() error {
 		//create msgBug and copy the readBuf
 		msgBuf := make([]byte, n)
 		copy(msgBuf, readBuf[:n])
-
 		//create new msg and add to msgch
 		msg := Message{
 			Data: msgBuf,

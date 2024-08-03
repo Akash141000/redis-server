@@ -47,24 +47,34 @@ func New(configOpts ...ConfigOpts) *Server {
 func (s *Server) Start() error {
 	slog.Info("server", "start", "server")
 
+	// create channel to listen to error
+	serverErr := make(chan error)
+
 	ln, err := net.Listen("tcp", s.ListenAddr)
 	if err != nil {
-		slog.Error("server", "error starting the server", err)
 		return err
 	}
-
 	s.ln = ln
 
-	// accept new peers
-	if err := s.acceptPeersAndMessages(); err != nil {
+	go func() {
+		// accept new peers
+		if err := s.acceptPeersAndMessages(); err != nil {
+			serverErr <- err
+		}
+	}()
+
+	go func() {
+		//
+		if err := s.acceptConnections(); err != nil {
+			serverErr <- err
+		}
+	}()
+
+	//wait for the error and exit if error occurs
+	err = <-serverErr
+	if err != nil {
 		return err
 	}
-
-	//
-	if err := s.acceptConnections(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -99,7 +109,7 @@ func (s *Server) handleConnection(conn net.Conn) error {
 	peer := peer.New(conn, s.msgch)
 	s.addPeerch <- peer
 
-	slog.Info("server", "new peer connected!", "remoteAddr", conn.RemoteAddr())
+	slog.Info("server", "new peer connected! remoteAddr", conn.RemoteAddr())
 
 	//keep reading peer
 	err := peer.ReadLoop()
@@ -122,7 +132,6 @@ func (s *Server) handleMessage(msg peer.Message) error {
 	if err != nil {
 		return err
 	}
-
 	// check if command is 'Set' or 'Get'
 	switch v := cmd.(type) {
 	case proto.SetCommand:

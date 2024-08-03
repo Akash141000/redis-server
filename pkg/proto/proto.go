@@ -3,15 +3,15 @@ package proto
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"strings"
 
 	"github.com/tidwall/resp"
 	"golang.org/x/exp/slog"
 )
 
 const (
-	CommandSet = "Set"
-	CommandGet = "Get"
+	CommandSet = "set"
+	CommandGet = "get"
 )
 
 type Command interface{}
@@ -28,31 +28,28 @@ func ParseCommand(rawMsg []byte) (Command, error) {
 	rd := resp.NewReader(bytes.NewBufferString(string(rawMsg)))
 	for {
 		rv, _, err := rd.ReadValue()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
+		if err != nil && err.Error() != "EOF" {
 			slog.Error("command", "error reading value", err)
 			return nil, err
 		}
 		if rv.Type() == resp.Array {
 			for _, value := range rv.Array() {
-				switch value.String() {
+				switch strings.ToLower(value.String()) {
 				case CommandSet:
-					if len(value.Array()) != 3 {
+					if len(rv.Array()) != 3 {
 						return nil, fmt.Errorf("invalid number arguments for SET command")
 					}
 					cmd := SetCommand{
-						Key:   value.Array()[1].Bytes(),
-						Value: value.Array()[2].Bytes(),
+						Key:   rv.Array()[1].Bytes(),
+						Value: rv.Array()[2].Bytes(),
 					}
 					return cmd, nil
 				case CommandGet:
-					if len(value.Array()) != 2 {
+					if len(rv.Array()) != 2 {
 						return nil, fmt.Errorf("invalid number arguments for GET command")
 					}
 					cmd := GetCommand{
-						Key: value.Array()[1].Bytes(),
+						Key: rv.Array()[1].Bytes(),
 					}
 					return cmd, nil
 				}
@@ -61,5 +58,4 @@ func ParseCommand(rawMsg []byte) (Command, error) {
 			return nil, fmt.Errorf("invalid command type")
 		}
 	}
-	return nil, nil
 }
