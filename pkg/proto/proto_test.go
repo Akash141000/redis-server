@@ -1,4 +1,4 @@
-package main
+package proto
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 )
 
 func TestProtocol(t *testing.T) {
-	raw := []byte("*3\r\n$3\r\nSET\r\n$7\r\ntestKey\r\n$9\r\ntestValue\r\n")
-	cmd, err := ParseCommand(raw)
+	rawMsg := []byte("*3\r\n$3\r\nSET\r\n$7\r\ntestKey\r\n$9\r\ntestValue\r\n")
+	cmd, err := ParseCommand(rawMsg)
 	if err != nil {
 		fmt.Println("err", err)
 	}

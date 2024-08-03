@@ -1,4 +1,4 @@
-package main
+package store
 
 import (
 	"fmt"
@@ -8,6 +8,11 @@ import (
 type Key string
 
 type Value []byte
+
+type Storer interface {
+	Set(key string, value []byte) error
+	Get(key []byte) (Value, error)
+}
 
 type MemoryStore struct {
 	mu   sync.RWMutex
@@ -21,16 +26,19 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-func (ms *MemoryStore) Set(key string, val string) error {
+func (ms *MemoryStore) Set(key string, val []byte) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
+	if _, ok := ms.data[Key(key)]; ok {
+		return fmt.Errorf("key %s already exists", key)
+	}
 	ms.data[Key(key)] = Value(val)
 
 	return nil
 }
 
-func (ms *MemoryStore) Get(key string) (Value, error) {
+func (ms *MemoryStore) Get(key []byte) (Value, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 

@@ -1,11 +1,12 @@
-package main
+package peer
 
 import (
 	"fmt"
 	"net"
+	"testing"
 )
 
-func main() {
+func TestPeer(t *testing.T) {
 	fmt.Println("test peer")
 	conn, err := net.Dial("tcp", "localhost:3000")
 	if err != nil {

@@ -1,4 +1,4 @@
-package main
+package proto
 
 import (
 	"bytes"
@@ -9,12 +9,19 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-const CommandSet = "Set"
+const (
+	CommandSet = "Set"
+	CommandGet = "Get"
+)
 
 type Command interface{}
 
 type SetCommand struct {
-	key, value string
+	Key, Value []byte
+}
+
+type GetCommand struct {
+	Key []byte
 }
 
 func ParseCommand(rawMsg []byte) (Command, error) {
@@ -36,10 +43,17 @@ func ParseCommand(rawMsg []byte) (Command, error) {
 						return nil, fmt.Errorf("invalid number arguments for SET command")
 					}
 					cmd := SetCommand{
-						key:   value.Array()[1].String(),
-						value: value.Array()[2].String(),
+						Key:   value.Array()[1].Bytes(),
+						Value: value.Array()[2].Bytes(),
 					}
-					fmt.Println("cmd", cmd)
+					return cmd, nil
+				case CommandGet:
+					if len(value.Array()) != 2 {
+						return nil, fmt.Errorf("invalid number arguments for GET command")
+					}
+					cmd := GetCommand{
+						Key: value.Array()[1].Bytes(),
+					}
 					return cmd, nil
 				}
 			}

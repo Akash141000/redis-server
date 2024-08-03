@@ -4,6 +4,3 @@ build:
 
 run: build
 	./bin/redis
-
-testPeer: 
-	go run cmd/testPeer/testPeer.go
