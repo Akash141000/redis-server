@@ -3,7 +3,6 @@ package server
 import (
 	"net"
 	"redis/pkg/peer"
-	"redis/pkg/proto"
 	"redis/pkg/store"
 
 	"golang.org/x/exp/slog"
@@ -21,7 +20,6 @@ type Server struct {
 	peers     map[*peer.Peer]bool
 	addPeerch chan *peer.Peer
 	quitch    chan struct{}
-	msgch     chan peer.Message
 	store     store.Storer
 }
 
@@ -33,7 +31,6 @@ func New(configOpts ...ConfigOpts) *Server {
 		peers:     make(map[*peer.Peer]bool),
 		quitch:    make(chan struct{}),
 		addPeerch: make(chan *peer.Peer),
-		msgch:     make(chan peer.Message),
 		store:     store.NewMemoryStore(),
 	}
 
@@ -94,10 +91,6 @@ func (s *Server) acceptPeersAndMessages() error {
 		select {
 		case <-s.quitch:
 			return nil
-		case msg := <-s.msgch:
-			if err := s.handleMessage(msg); err != nil {
-				slog.Error("server", "error handle message", err)
-			}
 		case peer := <-s.addPeerch:
 			s.peers[peer] = true
 		}
@@ -106,7 +99,7 @@ func (s *Server) acceptPeersAndMessages() error {
 
 func (s *Server) handleConnection(conn net.Conn) error {
 	//create new peer and add to server
-	peer := peer.New(conn, s.msgch)
+	peer := peer.New(conn, s.store)
 	s.addPeerch <- peer
 
 	slog.Info("server", "new peer connected! remoteAddr", conn.RemoteAddr())
@@ -123,27 +116,6 @@ func (s *Server) handleConnection(conn net.Conn) error {
 		return err
 	}
 
-	return nil
-}
-
-func (s *Server) handleMessage(msg peer.Message) error {
-	//parse the incoming message
-	cmd, err := proto.ParseCommand(msg.Data)
-	if err != nil {
-		return err
-	}
-	// check if command is 'Set' or 'Get'
-	switch v := cmd.(type) {
-	case proto.SetCommand:
-		return s.store.Set(string(v.Key), v.Value)
-	case proto.GetCommand:
-		val, err := s.store.Get(v.Key)
-		if err != nil {
-			return err
-		}
-		//send the value found for the key over connection
-		msg.Peer.Send(val)
-	}
 	return nil
 }
 
